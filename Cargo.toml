@@ -1,0 +1,10 @@
+[package]
+name = "irc-index"
+version = "0.1.0"
+authors = ["Jan-Erik Rediger <janerik@fnordig.de>"]
+
+[dependencies]
+regex = "0.2.2"
+tantivy = "0.4.3"
+lazy_static = "0.2.9"
+walkdir = "1.0.7"
