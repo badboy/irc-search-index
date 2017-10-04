@@ -1,0 +1,33 @@
+{{> header ~}}
+
+
+<form action="/search" method="get">
+    <input type="text" name="q" value="{{q}}" size="50">
+    <select name="limit">
+        <option value="10" {{#if limit_10}}selected="selected"{{/if}}>10</option>
+        <option value="50" {{#if limit_50}}selected="selected"{{/if}}>50</option>
+        <option value="100" {{#if limit_100}}selected="selected"{{/if}}>100</option>
+    </select>
+    <input type="submit" name="_search" value="Search">
+</form>
+
+<p>Searching for: {{q}}</p>
+<p>Showing {{shown_hits}} hits ({{num_hits}} total).</p>
+
+<div id="search-results">
+{{#each hits}}
+    <p>[{{time}}] {{nick}}: {{msg}}</p>
+{{/each}}
+</div>
+
+
+<script type="text/javascript" src="/hilitor.js"></script>
+<script type="text/javascript">
+    var hilitor = new Hilitor("search-results");
+    var query = "{{q}}";
+    if (query.length > 0) {
+        hilitor.apply(query);
+    }
+</script>
+
+{{> footer ~}}

@@ -8,3 +8,8 @@ regex = "0.2.2"
 tantivy = "0.4.3"
 lazy_static = "0.2.9"
 walkdir = "1.0.7"
+rocket = "0.3"
+rocket_codegen = "0.3"
+rocket_contrib = { version = "0.3", features = ["handlebars_templates"] }
+serde = "1.0"
+serde_derive = "1.0"

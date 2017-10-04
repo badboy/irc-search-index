@@ -1,0 +1,32 @@
+html,
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+pre {
+  padding: 1ch;
+  border: none;
+}
+
+main {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 900px;
+  padding: 50px 40px;
+  box-sizing: border-box;
+  min-height: 600px;
+}
+h1, h2, li {
+  font-weight: 100;
+}
+
+li {
+  list-style-type: circle;
+}
+
+h1 a {
+  text-decoration: none;
+  color: black;
+}
