@@ -26,13 +26,14 @@ lazy_static! {
     static ref WS: Regex = Regex::new(r"\s+").unwrap();
 }
 
-pub fn build_index(index_path: &Path, data_path: &str) -> Result<()> {
+pub fn build_index(index_path: &str, data_path: &str) -> Result<()> {
     let mut schema_builder = SchemaBuilder::default();
     schema_builder.add_text_field("time", TEXT | STORED);
     schema_builder.add_text_field("nick", TEXT | STORED);
     schema_builder.add_text_field("msg", TEXT | STORED);
     let schema = schema_builder.build();
 
+    let index_path = Path::new(index_path);
     let index = Index::create(index_path, schema.clone())?;
     let mut index_writer = index.writer(500_000_000)?;
 
