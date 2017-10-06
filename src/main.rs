@@ -12,6 +12,7 @@ extern crate rocket;
 extern crate rocket_contrib;
 extern crate structopt;
 #[macro_use] extern crate structopt_derive;
+#[macro_use] extern crate error_chain;
 
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -32,6 +33,9 @@ use rocket::response::{Redirect, NamedFile};
 use rocket_contrib::Template;
 
 use structopt::StructOpt;
+
+mod errors;
+use errors::*;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "irc-index")]
@@ -67,15 +71,15 @@ lazy_static! {
     static ref WS: Regex = Regex::new(r"\s+").unwrap();
 }
 
-fn build_index(index_path: &Path, data_path: &str) -> Index {
+fn build_index(index_path: &Path, data_path: &str) -> Result<()> {
     let mut schema_builder = SchemaBuilder::default();
     schema_builder.add_text_field("time", TEXT | STORED);
     schema_builder.add_text_field("nick", TEXT | STORED);
     schema_builder.add_text_field("msg", TEXT | STORED);
     let schema = schema_builder.build();
 
-    let index = Index::create(index_path, schema.clone()).expect("Can't create index");
-    let mut index_writer = index.writer(500_000_000).expect("Can't create index writer");
+    let index = Index::create(index_path, schema.clone())?;
+    let mut index_writer = index.writer(500_000_000)?;
 
     let time_field = schema.get_field("time").unwrap();
     let nick_field = schema.get_field("nick").unwrap();
@@ -91,11 +95,11 @@ fn build_index(index_path: &Path, data_path: &str) -> Index {
         let date = entry.path().file_stem().expect("Can't stem filename");
         let date = date.to_string_lossy();
 
-        let file = File::open(entry.path()).unwrap();
+        let file = File::open(entry.path())?;
         let reader = BufReader::new(file);
 
         for line in reader.lines() {
-            let line = line.unwrap();
+            let line = line?;
             let caps = match RE.captures(&line) {
                 Some(m) => m,
                 None => continue
@@ -121,7 +125,7 @@ fn build_index(index_path: &Path, data_path: &str) -> Index {
 
     println!("Indexed {} lines", count);
 
-    index
+    Ok(())
 }
 
 struct IndexServer {
@@ -130,10 +134,10 @@ struct IndexServer {
     schema: Schema,
 }
 
-fn init_index(index_path: &str) -> IndexServer {
+fn init_index(index_path: &str) -> Result<IndexServer> {
     println!("Loading index from path");
     let index_path = Path::new(index_path);
-    let index = Index::open(index_path).expect("Can't load index");
+    let index = Index::open(index_path)?;
 
     let schema = index.schema();
     let nick_field = schema.get_field("nick").unwrap();
@@ -141,11 +145,11 @@ fn init_index(index_path: &str) -> IndexServer {
 
     let query_parser = QueryParser::new(index.schema(), vec![nick_field, msg_field]);
 
-    IndexServer {
+    Ok(IndexServer {
         index: index,
         query_parser: query_parser,
         schema: schema
-    }
+    })
 }
 
 #[get("/")]
@@ -161,7 +165,7 @@ struct Query {
 }
 
 #[derive(Serialize)]
-struct Result {
+struct SearchResult {
     q: String,
     num_hits: usize,
     shown_hits: usize,
@@ -184,15 +188,15 @@ fn search_site_no_query() -> Template {
 }
 
 #[get("/search?<query>")]
-fn search_site(idx: State<IndexServer>, query: Query) -> Template {
+fn search_site(idx: State<IndexServer>, query: Query) -> Result<Template> {
     if query.q.is_none() {
-        return Template::render("search", None::<String>);
+        return Ok(Template::render("search", None::<()>));
     }
 
     let user_query = query.q.unwrap();
     let limit = query.limit.unwrap_or(10);
 
-    idx.index.load_searchers().expect("Can't load searchers");
+    idx.index.load_searchers()?;
     let searcher = idx.index.searcher();
 
     let query = idx.query_parser.parse_query(&user_query).expect("Can't parse query");
@@ -203,7 +207,7 @@ fn search_site(idx: State<IndexServer>, query: Query) -> Template {
         let mut chained_collector = collector::chain()
             .push(&mut top_collector)
             .push(&mut count_collector);
-        searcher.search(&*query, &mut chained_collector).expect("Can't search");
+        searcher.search(&*query, &mut chained_collector)?;
     }
 
     let doc_addresses = top_collector.docs();
@@ -221,7 +225,7 @@ fn search_site(idx: State<IndexServer>, query: Query) -> Template {
     }).collect::<Vec<_>>();
 
 
-    let results = Result {
+    let results = SearchResult {
         q: user_query,
         num_hits: count_collector.count(),
         shown_hits: hits.len(),
@@ -231,7 +235,7 @@ fn search_site(idx: State<IndexServer>, query: Query) -> Template {
         limit_100: limit == 100,
     };
 
-    return Template::render("search", results);
+    Ok(Template::render("search", results))
 }
 
 #[get("/<file..>")]
@@ -239,23 +243,25 @@ fn files(file: PathBuf) -> Option<NamedFile> {
     NamedFile::open(Path::new("static/").join(file)).ok()
 }
 
-fn main() {
+quick_main!(run);
+
+fn run() -> Result<()> {
     let matches = Opt::from_args();
 
     match matches {
         Opt::Index { data_path, index_path } => {
             let index_path = Path::new(&index_path);
-            build_index(&index_path, &data_path);
+            build_index(&index_path, &data_path)?;
             println!("Everything indexed.");
-            ::std::process::exit(0);
         }
         Opt::Serve { index_path } => {
             rocket::ignite()
                 .mount("/", routes![index_site, search_site_no_query, search_site, files])
                 .attach(Template::fairing())
-                .manage(init_index(&index_path))
+                .manage(init_index(&index_path)?)
                 .launch();
         }
     }
 
+    Ok(())
 }
