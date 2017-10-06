@@ -3,6 +3,12 @@ name = "irc-index"
 version = "0.1.0"
 authors = ["Jan-Erik Rediger <janerik@fnordig.de>"]
 
+keywords = [ "irc" ]
+description = "the simple IRC log searcher"
+
+readme = "README.md"
+license = "MIT"
+
 [dependencies]
 regex = "0.2.2"
 tantivy = "0.4.3"
