@@ -44,15 +44,15 @@ enum Opt {
     #[structopt(name = "index")]
     /// Indexes all logs from the given path
     Index {
-        #[structopt(long = "data-path", default_value = "data")]
+        #[structopt(short = "d", long = "data-path", default_value = "data")]
         data_path: String,
-        #[structopt(long = "index-path", default_value = "idx")]
+        #[structopt(short = "i", long = "index-path", default_value = "idx")]
         index_path: String,
     },
     #[structopt(name = "serve")]
     /// Serves the web interface
     Serve {
-        #[structopt(long = "index-path", default_value = "idx")]
+        #[structopt(short = "i", long = "index-path", default_value = "idx")]
         index_path: String,
     }
 }
