@@ -32,7 +32,7 @@ fn init_index(index_path: &str) -> Result<IndexServer> {
     Ok(IndexServer {
         index: index,
         query_parser: query_parser,
-        schema: schema
+        schema: schema,
     })
 }
 
@@ -96,17 +96,20 @@ fn search_site(idx: State<IndexServer>, query: Query) -> Result<Template> {
 
     let doc_addresses = top_collector.docs();
 
-    let hits = doc_addresses.into_iter().map(|da| {
-        let retrieved_doc = searcher.doc(&da).expect("Can't get document");
-        let doc = idx.schema.to_named_doc(&retrieved_doc);
-        let map = doc.0;
+    let hits = doc_addresses
+        .into_iter()
+        .map(|da| {
+            let retrieved_doc = searcher.doc(&da).expect("Can't get document");
+            let doc = idx.schema.to_named_doc(&retrieved_doc);
+            let map = doc.0;
 
-        Hit {
-            time: map["time"][0].text().to_owned(),
-            nick: map["nick"][0].text().to_owned(),
-            msg:  map["msg"][0].text().to_owned(),
-        }
-    }).collect::<Vec<_>>();
+            Hit {
+                time: map["time"][0].text().to_owned(),
+                nick: map["nick"][0].text().to_owned(),
+                msg: map["msg"][0].text().to_owned(),
+            }
+        })
+        .collect::<Vec<_>>();
 
 
     let results = SearchResult {
@@ -135,4 +138,3 @@ pub fn serve(index_path: &str) -> Result<()> {
 
     Ok(())
 }
-

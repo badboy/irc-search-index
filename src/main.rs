@@ -11,8 +11,10 @@ extern crate walkdir;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate structopt;
-#[macro_use] extern crate structopt_derive;
-#[macro_use] extern crate error_chain;
+#[macro_use]
+extern crate structopt_derive;
+#[macro_use]
+extern crate error_chain;
 
 use structopt::StructOpt;
 
@@ -41,7 +43,7 @@ enum Opt {
     Serve {
         #[structopt(short = "i", long = "index-path", default_value = "idx")]
         index_path: String,
-    }
+    },
 }
 
 quick_main!(run);
