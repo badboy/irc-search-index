@@ -47,7 +47,9 @@ pub fn build_index(index_path: &str, data_path: &str) -> Result<()> {
     let now = Instant::now();
     for entry in WalkDir::new(data_path) {
         let entry = entry.unwrap();
-        if entry.file_type().is_dir() { continue; }
+        if entry.file_type().is_dir() {
+            continue;
+        }
         let date = entry.path().file_stem().expect("Can't stem filename");
         let date = date.to_string_lossy();
 
@@ -58,17 +60,19 @@ pub fn build_index(index_path: &str, data_path: &str) -> Result<()> {
             let line = line?;
             let caps = match RE.captures(&line) {
                 Some(m) => m,
-                None => continue
+                None => continue,
             };
 
             let datetime = format!("{} {}", date, &caps["time"]);
 
-            if WS.is_match(&caps["nick"]) { continue; }
+            if WS.is_match(&caps["nick"]) {
+                continue;
+            }
 
             let mut doc = Document::default();
             doc.add_text(time_field.clone(), &datetime);
             doc.add_text(nick_field.clone(), &caps["nick"]);
-            doc.add_text(msg_field.clone(),  &caps["msg"]);
+            doc.add_text(msg_field.clone(), &caps["msg"]);
             index_writer.add_document(doc);
 
             count += 1;
@@ -83,4 +87,3 @@ pub fn build_index(index_path: &str, data_path: &str) -> Result<()> {
 
     Ok(())
 }
-
