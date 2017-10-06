@@ -10,12 +10,13 @@ extern crate tantivy;
 extern crate walkdir;
 extern crate rocket;
 extern crate rocket_contrib;
+extern crate structopt;
+#[macro_use] extern crate structopt_derive;
 
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::env;
 use std::time::Instant;
 
 use regex::Regex;
@@ -29,6 +30,28 @@ use tantivy::query::QueryParser;
 use rocket::State;
 use rocket::response::{Redirect, NamedFile};
 use rocket_contrib::Template;
+
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug)]
+#[structopt(name = "irc-index")]
+/// the simple IRC log searcher
+enum Opt {
+    #[structopt(name = "index")]
+    /// Indexes all logs from the given path
+    Index {
+        #[structopt(long = "data-path", default_value = "data")]
+        data_path: String,
+        #[structopt(long = "index-path", default_value = "idx")]
+        index_path: String,
+    },
+    #[structopt(name = "serve")]
+    /// Serves the web interface
+    Serve {
+        #[structopt(long = "index-path", default_value = "idx")]
+        index_path: String,
+    }
+}
 
 lazy_static! {
     static ref RE: Regex = Regex::new(r"(?x)
@@ -107,9 +130,9 @@ struct IndexServer {
     schema: Schema,
 }
 
-fn init_index() -> IndexServer {
+fn init_index(index_path: &str) -> IndexServer {
     println!("Loading index from path");
-    let index_path = Path::new("idx");
+    let index_path = Path::new(index_path);
     let index = Index::open(index_path).expect("Can't load index");
 
     let schema = index.schema();
@@ -217,22 +240,22 @@ fn files(file: PathBuf) -> Option<NamedFile> {
 }
 
 fn main() {
-    let mut args = env::args().skip(1).peekable();
-    let data_path = "data";
-    let index_path = Path::new("idx");
+    let matches = Opt::from_args();
 
-
-    if let Some(a) =  args.next() {
-        if a == "index" {
+    match matches {
+        Opt::Index { data_path, index_path } => {
+            let index_path = Path::new(&index_path);
             build_index(&index_path, &data_path);
             println!("Everything indexed.");
             ::std::process::exit(0);
         }
+        Opt::Serve { index_path } => {
+            rocket::ignite()
+                .mount("/", routes![index_site, search_site_no_query, search_site, files])
+                .attach(Template::fairing())
+                .manage(init_index(&index_path))
+                .launch();
+        }
     }
 
-    rocket::ignite()
-        .mount("/", routes![index_site, search_site_no_query, search_site, files])
-        .attach(Template::fairing())
-        .manage(init_index())
-        .launch();
 }
